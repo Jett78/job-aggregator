@@ -1,0 +1,12 @@
+{
+  "extends": "@repo/typescript-config/nest.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // Full emit every build: nest's deleteOutDir wipes dist first, which
+    // makes tsc incremental builds unreliable (stale .tsbuildinfo).
+    "incremental": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
