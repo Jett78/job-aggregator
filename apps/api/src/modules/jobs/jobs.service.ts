@@ -1,4 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import * as cheerio from 'cheerio';
 import {
   JobListing,
   JobSource,
@@ -18,7 +19,22 @@ const SOURCE_URLS: Record<JobSource, string> = {
   arbeitnow: 'https://www.arbeitnow.com',
   remotive: 'https://remotive.com',
   jobicy: 'https://jobicy.com',
+  merojob: 'https://merojob.com',
+  kumarijob: 'https://www.kumarijob.com',
+  jobsnepal: 'https://www.jobsnepal.com',
 };
+
+// Nepalese boards: no public API, best-effort HTML/JSON scraping. They only
+// carry a developer-only filter (see NEPAL_DEV_PATTERN), not INCLUDE_PATTERNS.
+const NEPAL_SOURCES: JobSource[] = ['merojob', 'kumarijob', 'jobsnepal'];
+
+// Keep any developer role from the Nepalese boards (broader than the
+// frontend-only filter used for the global boards).
+const NEPAL_DEV_PATTERN =
+  /developer|software engineer|front[\s-]?end|full[\s-]?stack|\breact\b|next\.?js|\bweb\b/i;
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // Keep only frontend / fullstack-relevant roles.
 const INCLUDE_PATTERNS = [
@@ -67,6 +83,9 @@ export class JobsService {
       this.fetchArbeitnow(),
       this.fetchRemotive(),
       this.fetchJobicy(),
+      this.fetchMerojob(),
+      this.fetchKumarijob(),
+      this.fetchJobsnepal(),
     ]);
 
     const sourceNames: JobSource[] = [
@@ -74,6 +93,9 @@ export class JobsService {
       'arbeitnow',
       'remotive',
       'jobicy',
+      'merojob',
+      'kumarijob',
+      'jobsnepal',
     ];
     const listings: JobListing[] = [];
     const sources: SourceStatus[] = [];
@@ -96,8 +118,12 @@ export class JobsService {
     }
 
     const deduped = this.dedupe(listings);
-    const relevant = deduped.filter((job) =>
-      this.isRelevant(job.title, job.tags),
+    // Nepalese listings arrive pre-filtered to developer roles; the
+    // frontend-only INCLUDE_PATTERNS apply to the global boards only.
+    const relevant = deduped.filter(
+      (job) =>
+        NEPAL_SOURCES.includes(job.source) ||
+        this.isRelevant(job.title, job.tags),
     );
     relevant.sort(
       (a, b) =>
@@ -111,7 +137,7 @@ export class JobsService {
       sources,
     };
     this.logger.log(
-      `Refreshed ${relevant.length} relevant jobs from ${sources.filter((s) => s.ok).length}/4 sources`,
+      `Refreshed ${relevant.length} relevant jobs from ${sources.filter((s) => s.ok).length}/7 sources`,
     );
     return this.cache;
   }
@@ -148,6 +174,24 @@ export class JobsService {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
       return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async fetchText(url: string): Promise<string> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': BROWSER_UA,
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
+      return await res.text();
     } finally {
       clearTimeout(timer);
     }
@@ -254,5 +298,143 @@ export class JobsService {
         }),
       )
       .filter((j) => j.title.length > 0 && j.url);
+  }
+
+  // --- Nepalese boards (best-effort scraping; developer roles only) ---
+
+  private async fetchMerojob(): Promise<JobListing[]> {
+    const html = await this.fetchText(
+      'https://merojob.com/category/it-telecommunication',
+    );
+    // The page embeds backslash-escaped JSON like {\"title\":\"...\",\"slug\":\"...\"}.
+    // Captures exclude backslashes so a match can never span across pairs.
+    const re = /\\"title\\":\\"([^\\"]*)\\",\\"slug\\":\\"([^\\"]*)\\"/g;
+    const seen = new Set<string>();
+    const listings: JobListing[] = [];
+    const fetchedAt = new Date().toISOString();
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) !== null) {
+      const title = m[1].trim();
+      const slug = m[2].trim();
+      if (!title || !slug || seen.has(slug)) continue;
+      seen.add(slug);
+      if (!NEPAL_DEV_PATTERN.test(title)) continue;
+      listings.push({
+        id: `merojob:${slug}`,
+        title,
+        company: '',
+        location: 'Nepal',
+        remote: false,
+        url: `https://merojob.com/${slug}`,
+        source: 'merojob',
+        sourceUrl: SOURCE_URLS.merojob,
+        publishedAt: fetchedAt,
+        tags: [],
+      });
+    }
+    return listings;
+  }
+
+  private async fetchKumarijob(): Promise<JobListing[]> {
+    const terms = [
+      'developer',
+      'software developer',
+      'frontend developer',
+      'web developer',
+    ];
+    const perTerm = await Promise.all(
+      terms.map(async (term): Promise<any[]> => {
+        try {
+          const data = await this.fetchJson(
+            `https://www.kumarijob.com/autocomplete-search?job_title=${encodeURIComponent(term)}`,
+          );
+          return Array.isArray(data) ? data : [];
+        } catch (err) {
+          this.logger.warn(`kumarijob autocomplete failed for "${term}": ${err}`);
+          return [];
+        }
+      }),
+    );
+    const seen = new Set<string>();
+    const listings: JobListing[] = [];
+    const fetchedAt = new Date().toISOString();
+    for (const items of perTerm) {
+      for (const j of items) {
+        const id = String(j?.id ?? '').trim();
+        const title = String(j?.job_title ?? '').trim();
+        const route = String(j?.route ?? '').trim();
+        if (!id || !title || !route || seen.has(id)) continue;
+        seen.add(id);
+        if (!NEPAL_DEV_PATTERN.test(title)) continue;
+        listings.push({
+          id: `kumarijob:${id}`,
+          title,
+          company: '',
+          location: 'Nepal',
+          remote: false,
+          url: route,
+          source: 'kumarijob',
+          sourceUrl: SOURCE_URLS.kumarijob,
+          publishedAt: fetchedAt,
+          tags: [],
+        });
+      }
+    }
+    return listings;
+  }
+
+  private async fetchJobsnepal(): Promise<JobListing[]> {
+    const html = await this.fetchText(
+      'https://www.jobsnepal.com/category/information-technology-jobs',
+    );
+    const $ = cheerio.load(html);
+    const listings: JobListing[] = [];
+    const fetchedAt = new Date().toISOString();
+    // Listings render as h2.job-title (cards) and h5.job-title (media rows).
+    const seen = new Set<string>();
+    $('h2.job-title > a, h5.job-title > a').each((_, el) => {
+      const a = $(el);
+      const h = a.closest('h2.job-title, h5.job-title');
+      const title = (h.attr('title') || a.text()).trim();
+      const href = (a.attr('href') || '').trim();
+      if (!title || !href) return;
+      if (!NEPAL_DEV_PATTERN.test(title)) return;
+      // Company: card layouts keep it in .company-logo (a[title]/img[alt]);
+      // media rows use a nearby h4.job-company.
+      let company = '';
+      const card = a.closest('.card-inner, .card');
+      if (card.length) {
+        company =
+          (card.find('.company-logo a').attr('title') || '').trim() ||
+          (card.find('.company-logo img').attr('alt') || '').trim();
+      }
+      if (!company) {
+        const ancestor = a
+          .parents()
+          .toArray()
+          .find((node) => $(node).find('h4.job-company').length > 0);
+        if (ancestor) {
+          company = $(ancestor).find('h4.job-company').first().text().trim();
+        }
+      }
+      const url = href.startsWith('http')
+        ? href
+        : `https://www.jobsnepal.com${href.startsWith('/') ? '' : '/'}${href}`;
+      if (seen.has(url)) return;
+      seen.add(url);
+      listings.push({
+        id: `jobsnepal:${url}`,
+        title,
+        company,
+        location: 'Nepal',
+        remote: false,
+        url,
+        source: 'jobsnepal',
+        sourceUrl: SOURCE_URLS.jobsnepal,
+        publishedAt: fetchedAt,
+        tags: [],
+      });
+    });
+    return listings;
   }
 }

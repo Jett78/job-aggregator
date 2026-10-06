@@ -1,4 +1,11 @@
-export type JobSource = 'remoteok' | 'arbeitnow' | 'remotive' | 'jobicy';
+export type JobSource =
+  | 'remoteok'
+  | 'arbeitnow'
+  | 'remotive'
+  | 'jobicy'
+  | 'merojob'
+  | 'kumarijob'
+  | 'jobsnepal';
 
 export interface JobListing {
   id: string;
@@ -31,6 +38,9 @@ export const SOURCE_LABELS: Record<JobSource, string> = {
   arbeitnow: 'Arbeitnow',
   remotive: 'Remotive',
   jobicy: 'Jobicy',
+  merojob: 'MeroJob',
+  kumarijob: 'KumariJob',
+  jobsnepal: 'JobsNepal',
 };
 
 export const NEPAL_BOARDS = [

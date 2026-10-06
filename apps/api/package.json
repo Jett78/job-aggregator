@@ -1,1 +1,35 @@
-{"dependencies":{"@nestjs/common":"^11.0.0","@nestjs/config":"^4.0.0","@nestjs/core":"^11.0.0","@nestjs/platform-express":"^11.0.0","class-transformer":"^0.5.1","class-validator":"^0.14.4","reflect-metadata":"^0.2.1","rxjs":"^7.8.1"},"devDependencies":{"@nestjs/cli":"^11.0.0","@nestjs/schematics":"^11.0.0","@repo/typescript-config":"*","@types/node":"^22.15.3","eslint":"^9.39.1","ts-node":"^10.9.2","tsconfig-paths":"^4.2.0","typescript":"5.9.2"},"name":"api","private":true,"scripts":{"build":"nest build","check-types":"tsc --noEmit","dev":"ts-node -r tsconfig-paths/register src/main.ts","dev:watch":"nest start --watch --preserveWatchOutput","lint":"eslint \"src/**/*.ts\" --max-warnings 0","start":"node dist/main.js","start:prod":"node dist/main.js"},"version":"0.1.0"}
+{
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "cheerio": "^1.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.4",
+    "reflect-metadata": "^0.2.1",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@repo/typescript-config": "*",
+    "@types/node": "^22.15.3",
+    "eslint": "^9.39.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "5.9.2"
+  },
+  "name": "api",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "check-types": "tsc --noEmit",
+    "dev": "ts-node -r tsconfig-paths/register src/main.ts",
+    "dev:watch": "nest start --watch --preserveWatchOutput",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js"
+  },
+  "version": "0.1.0"
+}

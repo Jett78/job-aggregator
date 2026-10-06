@@ -58,6 +58,9 @@ export class JobsController {
       arbeitnow: 'Arbeitnow',
       remotive: 'Remotive',
       jobicy: 'Jobicy',
+      merojob: 'MeroJob',
+      kumarijob: 'KumariJob',
+      jobsnepal: 'JobsNepal',
     };
     return {
       data: sources.map((s) => ({ ...s, label: labels[s.source] })),

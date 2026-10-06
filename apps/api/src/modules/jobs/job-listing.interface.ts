@@ -1,4 +1,11 @@
-export type JobSource = 'remoteok' | 'arbeitnow' | 'remotive' | 'jobicy';
+export type JobSource =
+  | 'remoteok'
+  | 'arbeitnow'
+  | 'remotive'
+  | 'jobicy'
+  | 'merojob'
+  | 'kumarijob'
+  | 'jobsnepal';
 
 export interface JobListing {
   id: string;
