@@ -22,7 +22,7 @@
   "devEngines": {
     "packageManager": {
       "name": "npm",
-      "version": "10.x"
+      "version": ">=10"
     }
   },
   "workspaces": [
