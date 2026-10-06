@@ -5,7 +5,8 @@ export type JobSource =
   | 'jobicy'
   | 'merojob'
   | 'kumarijob'
-  | 'jobsnepal';
+  | 'jobsnepal'
+  | 'hamrojobs';
 
 export interface JobListing {
   id: string;

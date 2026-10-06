@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { JobsService } from './jobs.service';
-import { JobSource } from './job-listing.interface';
+import { JobListing, JobSource } from './job-listing.interface';
 
 @Controller('jobs')
 export class JobsController {
@@ -14,26 +14,36 @@ export class JobsController {
   ) {
     const { listings, cachedAt, sources } = await this.jobsService.getJobs();
 
-    let filtered = listings;
+    const needle = q?.trim().toLowerCase() ?? '';
 
-    if (source) {
-      const wanted = source
-        .split(',')
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
-      filtered = filtered.filter((job) =>
-        wanted.includes(job.source as string),
-      );
+    // Live-query the Nepal boards for the user's term (kumarijob's
+    // autocomplete API takes arbitrary terms). These results are already
+    // term-matched, so the q text filter below must not exclude them —
+    // but source/remote filters still apply.
+    let live: JobListing[] = [];
+    if (needle) {
+      live = await this.jobsService.searchNepalLive(needle);
     }
 
-    if (remote === 'true') {
-      filtered = filtered.filter((job) => job.remote);
-    } else if (remote === 'false') {
-      filtered = filtered.filter((job) => !job.remote);
-    }
+    const wanted = source
+      ? source
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean)
+      : null;
+    const matchSource = (job: JobListing) =>
+      !wanted || wanted.includes(job.source as string);
+    const matchRemote = (job: JobListing) =>
+      remote === 'true'
+        ? job.remote
+        : remote === 'false'
+          ? !job.remote
+          : true;
 
-    if (q && q.trim()) {
-      const needle = q.trim().toLowerCase();
+    let filtered = listings.filter(matchSource).filter(matchRemote);
+    const liveFiltered = live.filter(matchSource).filter(matchRemote);
+
+    if (needle) {
       filtered = filtered.filter((job) =>
         [job.title, job.company, job.location, ...job.tags]
           .join(' ')
@@ -42,9 +52,22 @@ export class JobsController {
       );
     }
 
+    // Merge live results first, dedupe by id (a live hit may duplicate a
+    // cached kumarijob listing), newest first.
+    const seen = new Set<string>();
+    const merged = [...liveFiltered, ...filtered].filter((job) => {
+      if (seen.has(job.id)) return false;
+      seen.add(job.id);
+      return true;
+    });
+    merged.sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    );
+
     return {
-      data: filtered,
-      total: filtered.length,
+      data: merged,
+      total: merged.length,
       cachedAt,
       sources,
     };
@@ -61,6 +84,7 @@ export class JobsController {
       merojob: 'MeroJob',
       kumarijob: 'KumariJob',
       jobsnepal: 'JobsNepal',
+      hamrojobs: 'HamroJobs',
     };
     return {
       data: sources.map((s) => ({ ...s, label: labels[s.source] })),

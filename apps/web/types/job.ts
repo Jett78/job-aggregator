@@ -5,7 +5,8 @@ export type JobSource =
   | 'jobicy'
   | 'merojob'
   | 'kumarijob'
-  | 'jobsnepal';
+  | 'jobsnepal'
+  | 'hamrojobs';
 
 export interface JobListing {
   id: string;
@@ -41,6 +42,7 @@ export const SOURCE_LABELS: Record<JobSource, string> = {
   merojob: 'MeroJob',
   kumarijob: 'KumariJob',
   jobsnepal: 'JobsNepal',
+  hamrojobs: 'HamroJobs',
 };
 
 export const NEPAL_BOARDS = [

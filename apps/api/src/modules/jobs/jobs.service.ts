@@ -12,6 +12,7 @@ import {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const LIVE_QUERY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const FETCH_TIMEOUT_MS = 15_000;
 
 const SOURCE_URLS: Record<JobSource, string> = {
@@ -22,11 +23,17 @@ const SOURCE_URLS: Record<JobSource, string> = {
   merojob: 'https://merojob.com',
   kumarijob: 'https://www.kumarijob.com',
   jobsnepal: 'https://www.jobsnepal.com',
+  hamrojobs: 'https://hamrojobs.com.np',
 };
 
 // Nepalese boards: no public API, best-effort HTML/JSON scraping. They only
 // carry a developer-only filter (see NEPAL_DEV_PATTERN), not INCLUDE_PATTERNS.
-const NEPAL_SOURCES: JobSource[] = ['merojob', 'kumarijob', 'jobsnepal'];
+const NEPAL_SOURCES: JobSource[] = [
+  'merojob',
+  'kumarijob',
+  'jobsnepal',
+  'hamrojobs',
+];
 
 // Keep any developer role from the Nepalese boards (broader than the
 // frontend-only filter used for the global boards).
@@ -54,6 +61,12 @@ export class JobsService {
   private readonly logger = new Logger(JobsService.name);
   private cache: JobsCache | null = null;
   private refreshing: Promise<JobsCache> | null = null;
+  // Per-query live results (Nepal boards queried for the user's search term).
+  private liveCache = new Map<
+    string,
+    { listings: JobListing[]; expiresAt: number }
+  >();
+  private liveInflight = new Map<string, Promise<JobListing[]>>();
 
   async getJobs(): Promise<JobsCache> {
     const now = Date.now();
@@ -86,6 +99,7 @@ export class JobsService {
       this.fetchMerojob(),
       this.fetchKumarijob(),
       this.fetchJobsnepal(),
+      this.fetchHamrojobs(),
     ]);
 
     const sourceNames: JobSource[] = [
@@ -96,6 +110,7 @@ export class JobsService {
       'merojob',
       'kumarijob',
       'jobsnepal',
+      'hamrojobs',
     ];
     const listings: JobListing[] = [];
     const sources: SourceStatus[] = [];
@@ -137,7 +152,9 @@ export class JobsService {
       sources,
     };
     this.logger.log(
-      `Refreshed ${relevant.length} relevant jobs from ${sources.filter((s) => s.ok).length}/7 sources`,
+      `Refreshed ${relevant.length} relevant jobs from ${
+        sources.filter((s) => s.ok).length
+      }/${sourceNames.length} sources`,
     );
     return this.cache;
   }
@@ -336,12 +353,53 @@ export class JobsService {
   }
 
   private async fetchKumarijob(): Promise<JobListing[]> {
-    const terms = [
-      'developer',
-      'software developer',
-      'frontend developer',
-      'web developer',
-    ];
+    // Scheduled refresh: developer-flavored terms only (see NEPAL_DEV_PATTERN).
+    return this.fetchKumarijobTerms(
+      ['developer', 'software developer', 'frontend developer', 'web developer'],
+      true,
+    );
+  }
+
+  /**
+   * Live-query kumarijob's autocomplete API for an arbitrary search term.
+   * Results skip the developer-only filter (the user explicitly searched for
+   * this term) and are cached per query for a few minutes.
+   */
+  async searchNepalLive(query: string): Promise<JobListing[]> {
+    const term = query.trim().toLowerCase();
+    if (!term) return [];
+    const now = Date.now();
+    const cached = this.liveCache.get(term);
+    if (cached && now < cached.expiresAt) return cached.listings;
+    const inflight = this.liveInflight.get(term);
+    if (inflight) return inflight;
+    // Prune stale entries opportunistically.
+    for (const [key, entry] of this.liveCache) {
+      if (now >= entry.expiresAt) this.liveCache.delete(key);
+    }
+    const promise = this.fetchKumarijobTerms([query.trim()], false)
+      .then((listings) => {
+        this.liveCache.set(term, {
+          listings,
+          expiresAt: Date.now() + LIVE_QUERY_CACHE_TTL_MS,
+        });
+        return listings;
+      })
+      .catch((err) => {
+        this.logger.warn(`Live kumarijob query failed for "${term}": ${err}`);
+        return [] as JobListing[];
+      })
+      .finally(() => {
+        this.liveInflight.delete(term);
+      });
+    this.liveInflight.set(term, promise);
+    return promise;
+  }
+
+  private async fetchKumarijobTerms(
+    terms: string[],
+    applyDevFilter: boolean,
+  ): Promise<JobListing[]> {
     const perTerm = await Promise.all(
       terms.map(async (term): Promise<any[]> => {
         try {
@@ -365,7 +423,7 @@ export class JobsService {
         const route = String(j?.route ?? '').trim();
         if (!id || !title || !route || seen.has(id)) continue;
         seen.add(id);
-        if (!NEPAL_DEV_PATTERN.test(title)) continue;
+        if (applyDevFilter && !NEPAL_DEV_PATTERN.test(title)) continue;
         listings.push({
           id: `kumarijob:${id}`,
           title,
@@ -431,6 +489,46 @@ export class JobsService {
         url,
         source: 'jobsnepal',
         sourceUrl: SOURCE_URLS.jobsnepal,
+        publishedAt: fetchedAt,
+        tags: [],
+      });
+    });
+    return listings;
+  }
+
+  private async fetchHamrojobs(): Promise<JobListing[]> {
+    const html = await this.fetchText('https://hamrojobs.com.np/');
+    const $ = cheerio.load(html);
+    const listings: JobListing[] = [];
+    const fetchedAt = new Date().toISOString();
+    const seen = new Set<string>();
+    // Cards: a.card-title[href="/jobpost/{slug}/{id}"]; company in
+    // a.card-subtitle and location in span.location-icon nearby.
+    $('a.card-title[href^="/jobpost/"]').each((_, el) => {
+      const a = $(el);
+      const title = a.text().trim();
+      const href = (a.attr('href') || '').trim();
+      if (!title || !href) return;
+      if (!NEPAL_DEV_PATTERN.test(title)) return;
+      const meta =
+        a.closest('button').next('div').length > 0
+          ? a.closest('button').next('div')
+          : a.parent().parent();
+      const company = meta.find('a.card-subtitle').first().text().trim();
+      const location =
+        meta.find('span.location-icon').first().text().trim() || 'Nepal';
+      const url = `https://hamrojobs.com.np${href}`;
+      if (seen.has(url)) return;
+      seen.add(url);
+      listings.push({
+        id: `hamrojobs:${url}`,
+        title,
+        company,
+        location,
+        remote: false,
+        url,
+        source: 'hamrojobs',
+        sourceUrl: SOURCE_URLS.hamrojobs,
         publishedAt: fetchedAt,
         tags: [],
       });
