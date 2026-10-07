@@ -232,6 +232,11 @@ const SOURCE_OPTIONS: { value: 'all' | JobSource; label: string }[] = [
   { value: 'remotive', label: 'Remotive' },
   { value: 'jobicy', label: 'Jobicy' },
   { value: 'kumarijob', label: 'KumariJob' },
+  { value: 'themuse', label: 'TheMuse' },
+  { value: 'weworkremotely', label: 'We Work Remotely' },
+  { value: 'workingnomads', label: 'Working Nomads' },
+  { value: 'jobsbylevel', label: 'Jobs by Level' },
+  { value: 'hnhiring', label: 'HN Hiring' },
 ];
 
 const REMOTE_OPTIONS: { value: RemoteFilter; label: string }[] = [
@@ -313,7 +318,7 @@ export default function HomePage() {
             style={{ animationDelay: '160ms' }}
           >
             Every frontend and fullstack opening — remote, global, and Nepal —
-            pulled live from four job boards into one board.
+            pulled live from ten job boards into one board.
           </p>
 
           {/* Search */}

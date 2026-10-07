@@ -3,7 +3,12 @@ export type JobSource =
   | 'arbeitnow'
   | 'remotive'
   | 'jobicy'
-  | 'kumarijob';
+  | 'kumarijob'
+  | 'themuse'
+  | 'weworkremotely'
+  | 'workingnomads'
+  | 'jobsbylevel'
+  | 'hnhiring';
 
 export interface JobListing {
   id: string;
@@ -37,6 +42,11 @@ export const SOURCE_LABELS: Record<JobSource, string> = {
   remotive: 'Remotive',
   jobicy: 'Jobicy',
   kumarijob: 'KumariJob',
+  themuse: 'TheMuse',
+  weworkremotely: 'We Work Remotely',
+  workingnomads: 'Working Nomads',
+  jobsbylevel: 'Jobs by Level',
+  hnhiring: 'HN Hiring',
 };
 
 export const NEPAL_BOARDS = [

@@ -81,6 +81,11 @@ export class JobsController {
       remotive: 'Remotive',
       jobicy: 'Jobicy',
       kumarijob: 'KumariJob',
+      themuse: 'TheMuse',
+      weworkremotely: 'We Work Remotely',
+      workingnomads: 'Working Nomads',
+      jobsbylevel: 'Jobs by Level',
+      hnhiring: 'HN Hiring',
     };
     return {
       data: sources.map((s) => ({ ...s, label: labels[s.source] })),

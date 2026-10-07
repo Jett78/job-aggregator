@@ -3,7 +3,12 @@ export type JobSource =
   | 'arbeitnow'
   | 'remotive'
   | 'jobicy'
-  | 'kumarijob';
+  | 'kumarijob'
+  | 'themuse'
+  | 'weworkremotely'
+  | 'workingnomads'
+  | 'jobsbylevel'
+  | 'hnhiring';
 
 export interface JobListing {
   id: string;

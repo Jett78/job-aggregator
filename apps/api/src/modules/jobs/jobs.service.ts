@@ -1,4 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import * as cheerio from 'cheerio';
 import {
   JobListing,
   JobSource,
@@ -20,6 +21,11 @@ const SOURCE_URLS: Record<JobSource, string> = {
   remotive: 'https://remotive.com',
   jobicy: 'https://jobicy.com',
   kumarijob: 'https://www.kumarijob.com',
+  themuse: 'https://www.themuse.com',
+  weworkremotely: 'https://weworkremotely.com',
+  workingnomads: 'https://www.workingnomads.com',
+  jobsbylevel: 'https://jobsbylevel.com',
+  hnhiring: 'https://news.ycombinator.com',
 };
 
 // Keep any developer role from the Nepalese boards (broader than the
@@ -84,6 +90,11 @@ export class JobsService {
       this.fetchRemotive(),
       this.fetchJobicy(),
       this.fetchKumarijob(),
+      this.fetchTheMuse(),
+      this.fetchWeWorkRemotely(),
+      this.fetchWorkingNomads(),
+      this.fetchJobsByLevel(),
+      this.fetchHnHiring(),
     ]);
 
     const sourceNames: JobSource[] = [
@@ -92,6 +103,11 @@ export class JobsService {
       'remotive',
       'jobicy',
       'kumarijob',
+      'themuse',
+      'weworkremotely',
+      'workingnomads',
+      'jobsbylevel',
+      'hnhiring',
     ];
     const listings: JobListing[] = [];
     const sources: SourceStatus[] = [];
@@ -158,7 +174,10 @@ export class JobsService {
     });
   }
 
-  private async fetchJson(url: string): Promise<any> {
+  private async fetchJson(
+    url: string,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
@@ -167,6 +186,7 @@ export class JobsService {
         headers: {
           'User-Agent': 'job-aggregator/1.0 (personal project)',
           Accept: 'application/json',
+          ...extraHeaders,
         },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
@@ -176,7 +196,7 @@ export class JobsService {
     }
   }
 
-  private async fetchText(url: string): Promise<string> {
+  private async fetchText(url: string, accept?: string): Promise<string> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
@@ -184,7 +204,7 @@ export class JobsService {
         signal: controller.signal,
         headers: {
           'User-Agent': BROWSER_UA,
-          Accept: 'text/html,application/xhtml+xml',
+          Accept: accept ?? 'text/html,application/xhtml+xml',
         },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
@@ -384,6 +404,219 @@ export class JobsService {
           tags: [],
         });
       }
+    }
+    return listings;
+  }
+
+  // --- TheMuse (documented public API; 403s non-browser UAs) ---
+
+  private async fetchTheMuse(): Promise<JobListing[]> {
+    const listings: JobListing[] = [];
+    for (let page = 0; page < 3; page++) {
+      try {
+        const data = await this.fetchJson(
+          `https://www.themuse.com/api/public/jobs?category=${encodeURIComponent(
+            'Software Engineering',
+          )}&page=${page}`,
+          { 'User-Agent': BROWSER_UA },
+        );
+        const items: any[] = Array.isArray(data?.results) ? data.results : [];
+        for (const j of items) {
+          const title = String(j?.name ?? '').trim();
+          const url = String(j?.refs?.landing_page ?? '').trim();
+          if (!title || !url) continue;
+          const locations: string[] = Array.isArray(j?.locations)
+            ? j.locations
+                .map((l: any) => String(l?.name ?? '').trim())
+                .filter((l: string) => l.length > 0)
+            : [];
+          listings.push({
+            id: `themuse:${j?.id ?? url}`,
+            title,
+            company: String(j?.company?.name ?? 'Unknown').trim() || 'Unknown',
+            location: locations.join(', ') || 'Unknown',
+            remote: locations.some((l) => /remote/i.test(l)),
+            url,
+            source: 'themuse',
+            sourceUrl: SOURCE_URLS.themuse,
+            publishedAt: this.toIso(j?.publication_date),
+            tags: Array.isArray(j?.tags)
+              ? j.tags.filter((t: any) => typeof t === 'string')
+              : [],
+          });
+        }
+      } catch (err) {
+        this.logger.warn(`themuse page ${page} failed: ${err}`);
+      }
+    }
+    return listings;
+  }
+
+  // --- We Work Remotely (category feed served as RSS/XML) ---
+
+  private async fetchWeWorkRemotely(): Promise<JobListing[]> {
+    // NOTE: keep Accept as */* — requesting RSS/XML explicitly 302s to an
+    // HTML page, and text/html returns the HTML category page.
+    const xml = await this.fetchText(
+      'https://weworkremotely.com/categories/remote-programming-jobs',
+      '*/*',
+    );
+    const $ = cheerio.load(xml, { xmlMode: true });
+    const listings: JobListing[] = [];
+    $('item').each((_, el) => {
+      const rawTitle = $(el).find('title').text().trim();
+      const url = $(el).find('link').text().trim();
+      if (!rawTitle || !url) return;
+      // Titles follow the "Company: Role" convention.
+      const sep = rawTitle.indexOf(':');
+      const company = sep > 0 ? rawTitle.slice(0, sep).trim() : 'Unknown';
+      const title = (sep > 0 ? rawTitle.slice(sep + 1) : rawTitle).trim();
+      if (!title) return;
+      listings.push({
+        id: `weworkremotely:${url}`,
+        title,
+        company,
+        location: $(el).find('region').text().trim() || 'Remote',
+        remote: true, // WWR is a remote-only board
+        url,
+        source: 'weworkremotely',
+        sourceUrl: SOURCE_URLS.weworkremotely,
+        publishedAt: this.toIso($(el).find('pubDate').text().trim()),
+        tags: [$(el).find('category').text().trim()].filter(
+          (t) => t.length > 0,
+        ),
+      });
+    });
+    return listings;
+  }
+
+  // --- Working Nomads (public /api/exposed_jobs/ JSON) ---
+
+  private async fetchWorkingNomads(): Promise<JobListing[]> {
+    const data = await this.fetchJson(
+      'https://www.workingnomads.com/api/exposed_jobs/',
+    );
+    const items: any[] = Array.isArray(data) ? data : [];
+    return items
+      .map((j: any): JobListing | null => {
+        const title = String(j?.title ?? '').trim();
+        const url = String(j?.url ?? '').trim();
+        if (!title || !url) return null;
+        return {
+          id: `workingnomads:${url}`,
+          title,
+          company: String(j?.company_name ?? 'Unknown').trim() || 'Unknown',
+          location: String(j?.location ?? 'Remote').trim() || 'Remote',
+          remote: true, // Working Nomads is a remote-only board
+          url,
+          source: 'workingnomads',
+          sourceUrl: SOURCE_URLS.workingnomads,
+          publishedAt: this.toIso(j?.pub_date),
+          tags: [
+            ...(Array.isArray(j?.tags) ? j.tags : []),
+            String(j?.category_name ?? ''),
+          ].filter((t) => typeof t === 'string' && t.length > 0),
+        };
+      })
+      .filter((j): j is JobListing => j !== null);
+  }
+
+  // --- Jobs by Level (keyless public API; keep canonical URLs per their ask) ---
+
+  private async fetchJobsByLevel(): Promise<JobListing[]> {
+    const listings: JobListing[] = [];
+    for (let page = 1; page <= 3; page++) {
+      try {
+        const data = await this.fetchJson(
+          `https://jobsbylevel.com/api/v1/jobs?remote=1&page=${page}`,
+        );
+        const items: any[] = Array.isArray(data?.items) ? data.items : [];
+        for (const j of items) {
+          const title = String(j?.title ?? '').trim();
+          const url = String(j?.url ?? '').trim();
+          if (!title || !url) continue;
+          listings.push({
+            id: `jobsbylevel:${j?.id ?? url}`,
+            title,
+            company: String(j?.company ?? 'Unknown').trim() || 'Unknown',
+            location: String(j?.location ?? 'Remote').trim() || 'Remote',
+            remote: j?.remote !== false,
+            url,
+            source: 'jobsbylevel',
+            sourceUrl: SOURCE_URLS.jobsbylevel,
+            publishedAt: this.toIso(j?.posted_at),
+            tags: [String(j?.category ?? ''), String(j?.seniority ?? '')].filter(
+              (t) => t.length > 0,
+            ),
+          });
+        }
+      } catch (err) {
+        this.logger.warn(`jobsbylevel page ${page} failed: ${err}`);
+      }
+    }
+    return listings;
+  }
+
+  // --- HN "Who is hiring?" (Algolia API; latest monthly thread, best-effort parse) ---
+
+  private async fetchHnHiring(): Promise<JobListing[]> {
+    // Find the latest monthly hiring thread so this stays fresh.
+    const search = await this.fetchJson(
+      'https://hn.algolia.com/api/v1/search_by_date?tags=story&query=Ask%20HN%3A%20Who%20is%20hiring',
+    );
+    const hits: any[] = Array.isArray(search?.hits) ? search.hits : [];
+    const thread = hits.find((h) =>
+      String(h?.title ?? '').startsWith('Ask HN: Who is hiring?'),
+    );
+    if (!thread?.objectID) throw new Error('HN hiring thread not found');
+    const data = await this.fetchJson(
+      `https://hn.algolia.com/api/v1/items/${thread.objectID}`,
+    );
+    const comments: any[] = Array.isArray(data?.children)
+      ? data.children.slice(0, 200)
+      : [];
+    const listings: JobListing[] = [];
+    for (const c of comments) {
+      // First line usually follows "Company | Role | location" convention.
+      const text = cheerio.load(String(c?.text ?? '')).text();
+      const firstLine =
+        text
+          .split('\n')
+          .map((l) => l.trim())
+          .find((l) => l.length > 0) ?? '';
+      if (firstLine.length < 8 || firstLine.length > 160) continue;
+      const parts = firstLine
+        .split(/\s*\|\s*|\s+[—–-]\s+/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+      if (parts.length < 2) continue;
+      const company = parts[0];
+      // The role is not always the second segment (some posts put the
+      // location second), so pick the first segment that reads like a role.
+      const role = parts
+        .slice(1)
+        .find(
+          (p) =>
+            p.length <= 100 &&
+            /engineer|developer|designer|front[\s-]?end|full[\s-]?stack|back[\s-]?end|manager|scientist|analyst|architect|\bdev\b|devops|\bsre\b|product|marketing|sales|support|writer|researcher|intern|founder/i.test(
+              p,
+            ),
+        );
+      const title = role ?? parts[1];
+      if (!company || !title || company.length > 80) continue;
+      const isRemote = /remote/i.test(firstLine);
+      listings.push({
+        id: `hnhiring:${c?.id ?? `${thread.objectID}-${listings.length}`}`,
+        title,
+        company,
+        location: isRemote ? 'Remote' : 'See post',
+        remote: isRemote,
+        url: `https://news.ycombinator.com/item?id=${c?.id}`,
+        source: 'hnhiring',
+        sourceUrl: SOURCE_URLS.hnhiring,
+        publishedAt: this.toIso(c?.created_at),
+        tags: ['hn'],
+      });
     }
     return listings;
   }
