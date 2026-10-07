@@ -1,5 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import * as cheerio from 'cheerio';
+import { gunzip } from 'node:zlib';
+import { promisify } from 'node:util';
 import {
   JobListing,
   JobSource,
@@ -11,9 +13,22 @@ import {
 // in the mappers below, so the payloads stay untyped by design.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const gunzipAsync = promisify(gunzip);
+
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const LIVE_QUERY_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const SITEMAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const FETCH_TIMEOUT_MS = 15_000;
+
+// Sitemaps of all current job postings (title-derived URL slugs). Used for
+// live keyword search since neither board has a server-side search endpoint.
+const MEROJOB_SITEMAP_URL = 'https://sg.merojob.com/sitemap-job_post-1.xml.gz';
+const JOBSNEPAL_SITEMAP_URL = 'https://www.jobsnepal.com/jobs-sitemap.xml';
+const SITEMAP_HOST_PREFIX: Record<'merojob' | 'jobsnepal', string> = {
+  merojob: 'https://merojob.com/',
+  jobsnepal: 'https://www.jobsnepal.com/',
+};
+const LIVE_SITEMAP_RESULT_CAP = 30;
 
 const SOURCE_URLS: Record<JobSource, string> = {
   remoteok: 'https://remoteok.com',
@@ -67,6 +82,12 @@ export class JobsService {
     { listings: JobListing[]; expiresAt: number }
   >();
   private liveInflight = new Map<string, Promise<JobListing[]>>();
+  // Parsed sitemap URL lists (refreshed hourly; sitemaps update daily).
+  private sitemapCache = new Map<
+    'merojob' | 'jobsnepal',
+    { urls: string[]; expiresAt: number }
+  >();
+  private sitemapInflight = new Map<'merojob' | 'jobsnepal', Promise<string[]>>();
 
   async getJobs(): Promise<JobsCache> {
     const now = Date.now();
@@ -209,6 +230,21 @@ export class JobsService {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
       return await res.text();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async fetchBytes(url: string): Promise<Buffer> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': BROWSER_UA },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
+      return Buffer.from(await res.arrayBuffer());
     } finally {
       clearTimeout(timer);
     }
@@ -361,7 +397,10 @@ export class JobsService {
   }
 
   /**
-   * Live-query kumarijob's autocomplete API for an arbitrary search term.
+   * Live-query the Nepal boards for an arbitrary search term.
+   * - kumarijob: autocomplete JSON API takes arbitrary terms.
+   * - merojob / jobsnepal: no keyword search, so match the user's words
+   *   against their job-posting sitemaps (title-derived URL slugs).
    * Results skip the developer-only filter (the user explicitly searched for
    * this term) and are cached per query for a few minutes.
    */
@@ -377,7 +416,16 @@ export class JobsService {
     for (const [key, entry] of this.liveCache) {
       if (now >= entry.expiresAt) this.liveCache.delete(key);
     }
-    const promise = this.fetchKumarijobTerms([query.trim()], false)
+    const promise = Promise.all([
+      this.fetchKumarijobTerms([query.trim()], false),
+      this.searchMerojobSitemap(query.trim()),
+      this.searchJobsnepalSitemap(query.trim()),
+    ])
+      .then(([kumari, merojob, jobsnepal]) => [
+        ...kumari,
+        ...merojob,
+        ...jobsnepal,
+      ])
       .then((listings) => {
         this.liveCache.set(term, {
           listings,
@@ -386,7 +434,7 @@ export class JobsService {
         return listings;
       })
       .catch((err) => {
-        this.logger.warn(`Live kumarijob query failed for "${term}": ${err}`);
+        this.logger.warn(`Live Nepal query failed for "${term}": ${err}`);
         return [] as JobListing[];
       })
       .finally(() => {
@@ -394,6 +442,126 @@ export class JobsService {
       });
     this.liveInflight.set(term, promise);
     return promise;
+  }
+
+  private async searchMerojobSitemap(query: string): Promise<JobListing[]> {
+    try {
+      const urls = await this.getSitemapUrls('merojob');
+      return this.filterSitemapByQuery(urls, 'merojob', query);
+    } catch (err) {
+      this.logger.warn(`Live merojob sitemap query failed: ${err}`);
+      return [];
+    }
+  }
+
+  private async searchJobsnepalSitemap(query: string): Promise<JobListing[]> {
+    try {
+      const urls = await this.getSitemapUrls('jobsnepal');
+      return this.filterSitemapByQuery(urls, 'jobsnepal', query);
+    } catch (err) {
+      this.logger.warn(`Live jobsnepal sitemap query failed: ${err}`);
+      return [];
+    }
+  }
+
+  /**
+   * Parsed job-posting sitemap URLs for a source, cached for an hour.
+   * Never throws — returns [] when the sitemap is unreachable.
+   */
+  private async getSitemapUrls(
+    source: 'merojob' | 'jobsnepal',
+  ): Promise<string[]> {
+    const now = Date.now();
+    const cached = this.sitemapCache.get(source);
+    if (cached && now < cached.expiresAt) return cached.urls;
+    const inflight = this.sitemapInflight.get(source);
+    if (inflight) return inflight;
+    const promise = this.downloadSitemapUrls(source)
+      .then((urls) => {
+        this.sitemapCache.set(source, {
+          urls,
+          expiresAt: Date.now() + SITEMAP_CACHE_TTL_MS,
+        });
+        return urls;
+      })
+      .catch((err) => {
+        this.logger.warn(`${source} sitemap download failed: ${err}`);
+        return [] as string[];
+      })
+      .finally(() => {
+        this.sitemapInflight.delete(source);
+      });
+    this.sitemapInflight.set(source, promise);
+    return promise;
+  }
+
+  private async downloadSitemapUrls(
+    source: 'merojob' | 'jobsnepal',
+  ): Promise<string[]> {
+    let xml: string;
+    if (source === 'merojob') {
+      const gz = await this.fetchBytes(MEROJOB_SITEMAP_URL);
+      xml = (await gunzipAsync(gz)).toString('utf-8');
+    } else {
+      xml = await this.fetchText(JOBSNEPAL_SITEMAP_URL);
+    }
+    const prefix = SITEMAP_HOST_PREFIX[source];
+    const urls: string[] = [];
+    const re = /<loc>\s*([^<\s]+)\s*<\/loc>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(xml)) !== null) {
+      const loc = m[1].trim();
+      if (loc.startsWith(prefix)) urls.push(loc);
+    }
+    return urls;
+  }
+
+  /**
+   * Match the user's query words against sitemap URL slugs. The slug carries
+   * the job title; a trailing -<digits> posting id is stripped for matching
+   * and display, and bare-numeric slugs (no title info) are skipped.
+   */
+  private filterSitemapByQuery(
+    urls: string[],
+    source: 'merojob' | 'jobsnepal',
+    query: string,
+  ): JobListing[] {
+    const words = query
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 1);
+    if (words.length === 0) return [];
+    const listings: JobListing[] = [];
+    const fetchedAt = new Date().toISOString();
+    for (const loc of urls) {
+      if (listings.length >= LIVE_SITEMAP_RESULT_CAP) break;
+      const slug =
+        loc.split('?')[0].replace(/\/+$/, '').split('/').pop() ?? '';
+      const base = slug.replace(/-\d+$/, '');
+      if (!base || !/[a-zA-Z]/.test(base)) continue;
+      const hay = base.toLowerCase().replace(/-/g, ' ');
+      if (!words.every((w) => hay.includes(w))) continue;
+      const title = base
+        .split('-')
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+      listings.push({
+        // Same id schemes as the scheduled fetchers so the controller's
+        // dedupe-by-id collapses duplicates with base-cache listings.
+        id: `${source}:${source === 'merojob' ? slug : loc}`,
+        title,
+        company: '',
+        location: 'Nepal',
+        remote: false,
+        url: loc,
+        source,
+        sourceUrl: SOURCE_URLS[source],
+        publishedAt: fetchedAt,
+        tags: [],
+      });
+    }
+    return listings;
   }
 
   private async fetchKumarijobTerms(
