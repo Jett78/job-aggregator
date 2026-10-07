@@ -412,6 +412,7 @@ export class JobsService {
 
   private async fetchTheMuse(): Promise<JobListing[]> {
     const listings: JobListing[] = [];
+    let pagesOk = 0;
     for (let page = 0; page < 3; page++) {
       try {
         const data = await this.fetchJson(
@@ -420,6 +421,7 @@ export class JobsService {
           )}&page=${page}`,
           { 'User-Agent': BROWSER_UA },
         );
+        pagesOk++;
         const items: any[] = Array.isArray(data?.results) ? data.results : [];
         for (const j of items) {
           const title = String(j?.name ?? '').trim();
@@ -449,6 +451,7 @@ export class JobsService {
         this.logger.warn(`themuse page ${page} failed: ${err}`);
       }
     }
+    if (pagesOk === 0) throw new Error('themuse: all pages failed');
     return listings;
   }
 
