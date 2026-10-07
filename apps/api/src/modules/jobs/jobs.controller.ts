@@ -16,14 +16,12 @@ export class JobsController {
 
     const needle = q?.trim().toLowerCase() ?? '';
 
-    // Live-query the Nepal boards for the user's term: kumarijob's
-    // autocomplete API takes arbitrary terms; merojob and jobsnepal are
-    // matched against their job-posting sitemaps (title-derived URL slugs).
-    // These results are already term-matched, so the q text filter below must
+    // Live-query kumarijob's autocomplete API for the user's term. These
+    // results are already term-matched, so the q text filter below must
     // not exclude them — but source/remote filters still apply.
     let live: JobListing[] = [];
     if (needle) {
-      live = await this.jobsService.searchNepalLive(needle);
+      live = await this.jobsService.searchKumarijobLive(needle);
     }
 
     const wanted = source
@@ -82,10 +80,7 @@ export class JobsController {
       arbeitnow: 'Arbeitnow',
       remotive: 'Remotive',
       jobicy: 'Jobicy',
-      merojob: 'MeroJob',
       kumarijob: 'KumariJob',
-      jobsnepal: 'JobsNepal',
-      hamrojobs: 'HamroJobs',
     };
     return {
       data: sources.map((s) => ({ ...s, label: labels[s.source] })),

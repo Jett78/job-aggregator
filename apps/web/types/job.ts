@@ -3,10 +3,7 @@ export type JobSource =
   | 'arbeitnow'
   | 'remotive'
   | 'jobicy'
-  | 'merojob'
-  | 'kumarijob'
-  | 'jobsnepal'
-  | 'hamrojobs';
+  | 'kumarijob';
 
 export interface JobListing {
   id: string;
@@ -39,18 +36,10 @@ export const SOURCE_LABELS: Record<JobSource, string> = {
   arbeitnow: 'Arbeitnow',
   remotive: 'Remotive',
   jobicy: 'Jobicy',
-  merojob: 'MeroJob',
   kumarijob: 'KumariJob',
-  jobsnepal: 'JobsNepal',
-  hamrojobs: 'HamroJobs',
 };
 
 export const NEPAL_BOARDS = [
-  {
-    name: 'merojob',
-    description: 'Nepal’s largest job portal — search frontend & IT roles.',
-    url: 'https://merojob.com',
-  },
   {
     name: 'Cari Jobs',
     description: 'Frontend developer listings in Nepal.',

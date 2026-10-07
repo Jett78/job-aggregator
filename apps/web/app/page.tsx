@@ -231,10 +231,7 @@ const SOURCE_OPTIONS: { value: 'all' | JobSource; label: string }[] = [
   { value: 'arbeitnow', label: 'Arbeitnow' },
   { value: 'remotive', label: 'Remotive' },
   { value: 'jobicy', label: 'Jobicy' },
-  { value: 'merojob', label: 'MeroJob' },
   { value: 'kumarijob', label: 'KumariJob' },
-  { value: 'jobsnepal', label: 'JobsNepal' },
-  { value: 'hamrojobs', label: 'HamroJobs' },
 ];
 
 const REMOTE_OPTIONS: { value: RemoteFilter; label: string }[] = [
