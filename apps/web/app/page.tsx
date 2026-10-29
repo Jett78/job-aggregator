@@ -70,38 +70,38 @@ function initials(name: string): string {
 function AmbientBackground() {
   return (
     <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute inset-0 bg-[#07080b]" />
-      <div className="absolute inset-0 bg-grid mask-fade-b opacity-70" />
-      <div className="absolute -top-40 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-lime-400/[0.07] blur-[140px]" />
-      <div className="absolute top-1/3 -left-40 h-[420px] w-[420px] rounded-full bg-indigo-500/[0.08] blur-[130px]" />
-      <div className="absolute -right-40 bottom-0 h-[420px] w-[420px] rounded-full bg-emerald-500/[0.06] blur-[130px]" />
+      <div className="absolute inset-0 bg-[#f8fafc]" />
+      <div className="absolute inset-0 bg-grid mask-fade-b opacity-60" />
+      <div className="absolute -top-40 left-1/2 h-[480px] w-[820px] -translate-x-1/2 rounded-full bg-indigo-400/[0.09] blur-[140px]" />
+      <div className="absolute top-1/3 -left-40 h-[420px] w-[420px] rounded-full bg-sky-400/[0.08] blur-[130px]" />
+      <div className="absolute -right-40 bottom-0 h-[420px] w-[420px] rounded-full bg-emerald-400/[0.07] blur-[130px]" />
     </div>
   );
 }
 
 function Header({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: boolean }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#07080b]/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400 shadow-[0_0_24px_rgb(163_230_53/0.35)]">
-            <Briefcase className="h-4.5 w-4.5 text-black" strokeWidth={2.25} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 shadow-[0_8px_20px_-6px_rgb(79_70_229/0.55)]">
+            <Briefcase className="h-4.5 w-4.5 text-white" strokeWidth={2.25} />
           </div>
           <span className="font-display text-lg font-bold tracking-tight">
             Job<span className="text-gradient">Board</span>
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400 sm:inline-flex">
+          <span className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-slate-500 sm:inline-flex">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping-soft rounded-full bg-lime-400" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-lime-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping-soft rounded-full bg-emerald-500" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
             Live
           </span>
           <button
             onClick={onRefresh}
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-lime-300/30 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
             <span className="hidden sm:inline">Refresh</span>
@@ -115,7 +115,7 @@ function Header({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: 
 function JobCard({ job, index }: { job: JobListing; index: number }) {
   return (
     <article
-      className="group animate-fade-up relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-lime-300/25 hover:bg-white/[0.05] hover:shadow-[0_20px_60px_-20px_rgb(163_230_53/0.15)]"
+      className="group animate-fade-up relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_16px_40px_-16px_rgb(15_23_42/0.15)]"
       style={{ animationDelay: `${Math.min(index, 11) * 45}ms` }}
     >
       <div className="flex items-start gap-3.5">
@@ -132,19 +132,19 @@ function JobCard({ job, index }: { job: JobListing; index: number }) {
             href={job.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block truncate font-display text-[15px] font-semibold leading-snug text-zinc-100 transition-colors group-hover:text-lime-200"
+            className="block truncate font-display text-[15px] font-semibold leading-snug text-slate-900 transition-colors group-hover:text-indigo-600"
           >
             {job.title}
           </a>
-          <p className="mt-0.5 truncate text-sm text-zinc-400">{job.company}</p>
+          <p className="mt-0.5 truncate text-sm text-slate-500">{job.company}</p>
         </div>
         {job.remote ? (
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-lime-300/25 bg-lime-300/10 px-2.5 py-1 text-[11px] font-semibold text-lime-200">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
             <Zap className="h-3 w-3" />
             Remote
           </span>
         ) : (
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] font-medium text-zinc-400">
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-500">
             <MapPin className="h-3 w-3" />
             <span className="max-w-[90px] truncate">{job.location}</span>
           </span>
@@ -156,7 +156,7 @@ function JobCard({ job, index }: { job: JobListing; index: number }) {
           {job.tags.slice(0, 5).map((tag) => (
             <span
               key={tag}
-              className="rounded-md bg-white/[0.05] px-2 py-1 font-mono text-[11px] text-zinc-400 transition-colors group-hover:text-zinc-300"
+              className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-500 transition-colors group-hover:text-slate-700"
             >
               {tag}
             </span>
@@ -164,20 +164,20 @@ function JobCard({ job, index }: { job: JobListing; index: number }) {
         </div>
       )}
 
-      <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4">
-        <div className="flex min-w-0 items-center gap-2 font-mono text-[11px] text-zinc-500">
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div className="flex min-w-0 items-center gap-2 font-mono text-[11px] text-slate-400">
           <span className="inline-flex shrink-0 items-center gap-1">
             <Clock className="h-3 w-3" />
             {timeAgo(job.publishedAt)}
           </span>
-          <span className="text-zinc-700">·</span>
+          <span className="text-slate-300">·</span>
           <span className="truncate">
             via{' '}
             <a
               href={job.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-400 underline decoration-zinc-700 underline-offset-2 transition-colors hover:text-lime-300"
+              className="text-slate-500 underline decoration-slate-300 underline-offset-2 transition-colors hover:text-indigo-600"
             >
               {SOURCE_LABELS[job.source]}
             </a>
@@ -187,7 +187,7 @@ function JobCard({ job, index }: { job: JobListing; index: number }) {
           href={job.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-lime-400 px-4 py-2 text-[13px] font-bold text-black transition-all hover:bg-lime-300 hover:shadow-[0_0_20px_rgb(163_230_53/0.4)]"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-indigo-600 px-4 py-2 text-[13px] font-bold text-white transition-all hover:bg-indigo-500 hover:shadow-[0_8px_20px_-6px_rgb(79_70_229/0.5)]"
         >
           Apply
           <ArrowUpRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -199,25 +199,25 @@ function JobCard({ job, index }: { job: JobListing; index: number }) {
 
 function JobSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgb(15_23_42/0.04)]">
       <div className="flex items-start gap-3.5">
-        <div className="h-11 w-11 shrink-0 animate-shimmer rounded-xl bg-[linear-gradient(110deg,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.04)_60%)] bg-[length:200%_100%]" />
+        <div className="h-11 w-11 shrink-0 animate-shimmer rounded-xl bg-[linear-gradient(110deg,rgba(15,23,42,0.05)_40%,rgba(15,23,42,0.1)_50%,rgba(15,23,42,0.05)_60%)] bg-[length:200%_100%]" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-4/5 animate-shimmer rounded bg-[linear-gradient(110deg,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.04)_60%)] bg-[length:200%_100%]" />
-          <div className="h-3 w-2/5 animate-shimmer rounded bg-[linear-gradient(110deg,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.04)_60%)] bg-[length:200%_100%]" />
+          <div className="h-4 w-4/5 animate-shimmer rounded bg-[linear-gradient(110deg,rgba(15,23,42,0.05)_40%,rgba(15,23,42,0.1)_50%,rgba(15,23,42,0.05)_60%)] bg-[length:200%_100%]" />
+          <div className="h-3 w-2/5 animate-shimmer rounded bg-[linear-gradient(110deg,rgba(15,23,42,0.05)_40%,rgba(15,23,42,0.1)_50%,rgba(15,23,42,0.05)_60%)] bg-[length:200%_100%]" />
         </div>
       </div>
       <div className="mt-4 flex gap-1.5">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="h-6 w-16 animate-shimmer rounded-md bg-[linear-gradient(110deg,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.04)_60%)] bg-[length:200%_100%]"
+            className="h-6 w-16 animate-shimmer rounded-md bg-[linear-gradient(110deg,rgba(15,23,42,0.05)_40%,rgba(15,23,42,0.1)_50%,rgba(15,23,42,0.05)_60%)] bg-[length:200%_100%]"
           />
         ))}
       </div>
-      <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4">
-        <div className="h-3 w-28 animate-shimmer rounded bg-[linear-gradient(110deg,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.04)_60%)] bg-[length:200%_100%]" />
-        <div className="h-8 w-20 animate-shimmer rounded-full bg-[linear-gradient(110deg,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.04)_60%)] bg-[length:200%_100%]" />
+      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div className="h-3 w-28 animate-shimmer rounded bg-[linear-gradient(110deg,rgba(15,23,42,0.05)_40%,rgba(15,23,42,0.1)_50%,rgba(15,23,42,0.05)_60%)] bg-[length:200%_100%]" />
+        <div className="h-8 w-20 animate-shimmer rounded-full bg-[linear-gradient(110deg,rgba(15,23,42,0.05)_40%,rgba(15,23,42,0.1)_50%,rgba(15,23,42,0.05)_60%)] bg-[length:200%_100%]" />
       </div>
     </div>
   );
@@ -301,12 +301,12 @@ export default function HomePage() {
       <main className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* Hero */}
         <section className="pb-8 pt-12 text-center sm:pt-16">
-          <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/[0.07] px-4 py-1.5 text-[13px] font-medium text-lime-200">
+          <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-[13px] font-medium text-indigo-600">
             <Sparkles className="h-3.5 w-3.5" />
             Frontend & fullstack · Nepal + remote
           </div>
           <h1
-            className="animate-fade-up mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl"
+            className="animate-fade-up mx-auto mt-6 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-6xl"
             style={{ animationDelay: '80ms' }}
           >
             Stop tab-hopping.
@@ -314,7 +314,7 @@ export default function HomePage() {
             <span className="text-gradient">Start applying.</span>
           </h1>
           <p
-            className="animate-fade-up mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-zinc-400 sm:text-base"
+            className="animate-fade-up mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-slate-500 sm:text-base"
             style={{ animationDelay: '160ms' }}
           >
             Every frontend and fullstack opening — remote, global, and Nepal —
@@ -327,30 +327,30 @@ export default function HomePage() {
             style={{ animationDelay: '240ms' }}
           >
             <div className="group relative">
-              <div className="absolute -inset-0.5 rounded-[20px] bg-gradient-to-r from-lime-400/30 via-emerald-400/10 to-indigo-500/20 opacity-60 blur-md transition-opacity group-focus-within:opacity-100" />
-              <div className="relative flex items-center rounded-2xl border border-white/10 bg-[#0c0e12]/90 backdrop-blur-xl transition-colors focus-within:border-lime-300/40">
-                <Search className="ml-5 h-5 w-5 shrink-0 text-zinc-500" />
+              <div className="absolute -inset-0.5 rounded-[20px] bg-gradient-to-r from-indigo-400/25 via-sky-300/15 to-violet-400/20 opacity-60 blur-md transition-opacity group-focus-within:opacity-100" />
+              <div className="relative flex items-center rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_-12px_rgb(15_23_42/0.12)] backdrop-blur-xl transition-colors focus-within:border-indigo-300">
+                <Search className="ml-5 h-5 w-5 shrink-0 text-slate-400" />
                 <input
                   ref={searchRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search title, company, or stack…"
-                  className="h-14 w-full bg-transparent px-4 text-[15px] text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+                  className="h-14 w-full bg-transparent px-4 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none"
                 />
-                <kbd className="mr-4 hidden shrink-0 rounded-md border border-white/10 bg-white/[0.06] px-2 py-1 font-mono text-[11px] text-zinc-500 sm:block">
+                <kbd className="mr-4 hidden shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-400 sm:block">
                   /
                 </kbd>
               </div>
             </div>
             <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-600">
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-slate-400">
                 Popular
               </span>
               {POPULAR.map((p) => (
                 <button
                   key={p}
                   onClick={() => setQuery(p)}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-mono text-xs text-zinc-400 transition hover:border-lime-300/30 hover:text-lime-200"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 font-mono text-xs text-slate-500 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
                 >
                   {p}
                 </button>
@@ -361,8 +361,8 @@ export default function HomePage() {
 
         {/* Filter bar */}
         <div className="sticky top-16 z-30 -mx-4 px-4 py-3 sm:-mx-6 sm:px-6">
-          <div className="glass mx-auto flex max-w-6xl flex-wrap items-center gap-2 rounded-2xl p-2 shadow-[0_8px_40px_-12px_rgb(0_0_0/0.6)]">
-            <div className="flex rounded-full bg-white/[0.05] p-1">
+          <div className="glass mx-auto flex max-w-6xl flex-wrap items-center gap-2 rounded-2xl p-2 shadow-[0_8px_30px_-12px_rgb(15_23_42/0.15)]">
+            <div className="flex rounded-full bg-slate-100 p-1">
               {REMOTE_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -370,15 +370,15 @@ export default function HomePage() {
                   className={cn(
                     'rounded-full px-4 py-1.5 text-[13px] font-medium transition-all',
                     remoteFilter === opt.value
-                      ? 'bg-lime-400 font-bold text-black shadow-[0_0_16px_rgb(163_230_53/0.35)]'
-                      : 'text-zinc-400 hover:text-zinc-100',
+                      ? 'bg-indigo-600 font-semibold text-white shadow-[0_4px_14px_-4px_rgb(79_70_229/0.5)]'
+                      : 'text-slate-500 hover:text-slate-900',
                   )}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <span className="mx-1 hidden h-6 w-px bg-white/10 sm:block" />
+            <span className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
             <div className="flex flex-wrap items-center gap-1.5">
               {SOURCE_OPTIONS.map((opt) => (
                 <button
@@ -387,8 +387,8 @@ export default function HomePage() {
                   className={cn(
                     'rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all',
                     source === opt.value
-                      ? 'border-lime-300/40 bg-lime-300/10 text-lime-200'
-                      : 'border-transparent text-zinc-500 hover:border-white/10 hover:text-zinc-200',
+                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                      : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900',
                   )}
                 >
                   {opt.label}
@@ -396,15 +396,15 @@ export default function HomePage() {
               ))}
             </div>
             <div className="ml-auto flex items-center gap-3 pr-1">
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-600">
+              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-slate-400">
                 {isLoading ? (
                   'loading…'
                 ) : (
                   <>
-                    <span className="text-lime-300">{data?.total ?? 0}</span>{' '}
+                    <span className="font-semibold text-indigo-600">{data?.total ?? 0}</span>{' '}
                     roles
                     {data?.cachedAt && (
-                      <span className="text-zinc-600">
+                      <span className="text-slate-400">
                         {' '}
                         · {timeAgo(data.cachedAt)}
                       </span>
@@ -425,34 +425,34 @@ export default function HomePage() {
               ))}
             </div>
           ) : isError ? (
-            <div className="animate-fade-up mx-auto max-w-md rounded-2xl border border-white/[0.07] bg-white/[0.03] p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                <WifiOff className="h-6 w-6 text-zinc-500" />
+            <div className="animate-fade-up mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                <WifiOff className="h-6 w-6 text-slate-400" />
               </div>
-              <p className="mt-4 font-display text-lg font-semibold text-white">
+              <p className="mt-4 font-display text-lg font-semibold text-slate-900">
                 Couldn’t load jobs
               </p>
-              <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
                 The API might be waking up or a source is down. Give it a
                 moment and retry.
               </p>
               <button
                 onClick={() => refetch()}
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-lime-400 px-5 py-2.5 text-sm font-bold text-black transition hover:bg-lime-300"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500"
               >
                 <RefreshCw className="h-4 w-4" />
                 Retry
               </button>
             </div>
           ) : jobs.length === 0 ? (
-            <div className="animate-fade-up mx-auto max-w-md rounded-2xl border border-white/[0.07] bg-white/[0.03] p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                <SearchX className="h-6 w-6 text-zinc-500" />
+            <div className="animate-fade-up mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
+                <SearchX className="h-6 w-6 text-slate-400" />
               </div>
-              <p className="mt-4 font-display text-lg font-semibold text-white">
+              <p className="mt-4 font-display text-lg font-semibold text-slate-900">
                 No roles match
               </p>
-              <p className="mt-1.5 text-sm text-zinc-500">
+              <p className="mt-1.5 text-sm text-slate-500">
                 Try a different keyword or clear the filters.
               </p>
               <button
@@ -461,7 +461,7 @@ export default function HomePage() {
                   setSource('all');
                   setRemoteFilter('all');
                 }}
-                className="mt-5 rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-lime-300/40 hover:text-lime-200"
+                className="mt-5 rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
               >
                 Clear filters
               </button>
@@ -478,14 +478,14 @@ export default function HomePage() {
         {/* Nepal boards */}
         <section className="mt-10 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
-              <Globe2 className="h-4.5 w-4.5 text-lime-300" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+              <Globe2 className="h-4.5 w-4.5 text-indigo-600" />
             </div>
             <div>
-              <h2 className="font-display text-xl font-bold tracking-tight text-white">
+              <h2 className="font-display text-xl font-bold tracking-tight text-slate-900">
                 Nepal job boards
               </h2>
-              <p className="text-[13px] text-zinc-500">
+              <p className="text-[13px] text-slate-500">
                 No public API here — these open in a new tab.
               </p>
             </div>
@@ -497,21 +497,21 @@ export default function HomePage() {
                 href={board.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group animate-fade-up relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-lime-300/25 hover:bg-white/[0.05]"
+                className="group animate-fade-up relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_2px_rgb(15_23_42/0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-[0_16px_40px_-16px_rgb(15_23_42/0.12)]"
                 style={{ animationDelay: `${i * 80}ms` }}
               >
-                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-lime-400/[0.06] blur-3xl transition-opacity opacity-0 group-hover:opacity-100" />
+                <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-indigo-400/[0.07] blur-3xl transition-opacity opacity-0 group-hover:opacity-100" />
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-display text-lg font-bold text-white">
+                    <p className="font-display text-lg font-bold text-slate-900">
                       {board.name}
                     </p>
-                    <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">
+                    <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
                       {board.description}
                     </p>
                   </div>
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] transition-all group-hover:border-lime-300/40 group-hover:bg-lime-400">
-                    <ArrowUpRight className="h-5 w-5 text-zinc-300 transition-all group-hover:text-black" />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition-all group-hover:border-indigo-600 group-hover:bg-indigo-600">
+                    <ArrowUpRight className="h-5 w-5 text-slate-500 transition-all group-hover:text-white" />
                   </div>
                 </div>
               </a>
@@ -520,8 +520,8 @@ export default function HomePage() {
         </section>
 
         {/* Footer */}
-        <footer className="mt-10 border-t border-white/[0.06] py-8 text-center">
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-600">
+        <footer className="mt-10 border-t border-slate-200 py-8 text-center">
+          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-slate-400">
             Listings via
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
@@ -536,13 +536,13 @@ export default function HomePage() {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-400 underline decoration-zinc-800 underline-offset-4 transition-colors hover:text-lime-300"
+                className="text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-indigo-600"
               >
                 {name}
               </a>
             ))}
           </div>
-          <p className="mt-4 text-xs text-zinc-600">
+          <p className="mt-4 text-xs text-slate-400">
             Apply links always go to the original posting.
           </p>
         </footer>

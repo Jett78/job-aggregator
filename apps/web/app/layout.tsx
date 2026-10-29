@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { QueryProvider } from '@/providers/query-provider';
 import './globals.css';
@@ -21,6 +21,11 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  themeColor: '#f8fafc',
+  colorScheme: 'light',
+};
+
 export const metadata: Metadata = {
   title: 'JobBoard — Frontend & Fullstack Roles',
   description:
@@ -33,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
     >
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <QueryProvider>{children}</QueryProvider>
